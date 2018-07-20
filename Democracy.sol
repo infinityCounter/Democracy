@@ -131,19 +131,23 @@ contract Democracy {
         approvalRequirmentsByMotionType[3] = req;
     }
 
-    function isGovernor(address _claimant) public returns (bool) {
+    function isGovernor(address _claimant) public view returns (bool) {
         return _claimant == governor;
     }
 
-    function getRepresentativeCount() public returns (uint) {
+    function getRepresentativeCount() public view returns (uint) {
         return numRepresentatives;
     }
 
-    function isRepresentative(address _claimant) public returns (bool) {
+    function isRepresentative(address _claimant) public view returns (bool) {
         return representatives[representativeIndexes[_claimant]] ==_claimant;
     }
+    
+    function getMotionsCount() public view returns (uint) {
+        return motions.length;
+    }
 
-    function _createBasicRepresentativeMotion(MotionType motionType, string _desc, address _proposedRep, uint _deadline) internal onlyRepresentative(msg.sender) returns (uint) {
+    function _createBasicRepresentativeMotion(MotionType motionType, string _desc, address _proposedRep, uint _deadline) internal  returns (uint) {
         require(_deadline > now, "Motion deadline must be later than current datetime");
         Motion memory motion;
         motion.motionType = motionType;
@@ -154,19 +158,19 @@ contract Democracy {
         return motions.push(motion);
     }
 
-    function createElectRepresentativeMotion(string _desc, address _proposedRep, uint _deadline) public returns (uint) {
+    function createElectRepresentativeMotion(string _desc, address _proposedRep, uint _deadline) public onlyRepresentative(msg.sender) returns (uint) {
         address repFromLookup = representatives[representativeIndexes[_proposedRep]];
         require (repFromLookup != _proposedRep, "That address is already a representative");
         return _createBasicRepresentativeMotion(MotionType.ELECT_REPRESENTATIVE, _desc, _proposedRep, _deadline);
     }
 
-    function createDismissRepresentativeMotion(string _desc, address _proposedRep, uint _deadline) public returns (uint) {
+    function createDismissRepresentativeMotion(string _desc, address _proposedRep, uint _deadline) public onlyRepresentative(msg.sender) returns (uint) {
         address repFromLookup = representatives[representativeIndexes[_proposedRep]];
         require (repFromLookup == _proposedRep, "That address is not a reprsenatative");
         return _createBasicRepresentativeMotion(MotionType.DISMISS_REPRESENTATIVE, _desc, _proposedRep, _deadline);
     }
 
-    function createElectGovernorMotion(string _desc, address _proposedGov, uint _deadline) public returns (uint) {
+    function createElectGovernorMotion(string _desc, address _proposedGov, uint _deadline) public onlyRepresentative(msg.sender) returns (uint) {
         require(_proposedGov != governor, "That address is already the governor");
         return _createBasicRepresentativeMotion(MotionType.ELECT_GOVERNOR, _desc, _proposedGov, _deadline);
     }
@@ -229,7 +233,7 @@ contract Democracy {
         emit MotionVetoed(_motionId);
     }
 
-    function _enactMotion(uint _motionId) internal onlyRepresentative(msg.sender) motionOpen(_motionId) {
+    function enactMotion(uint _motionId) public onlyRepresentative(msg.sender) motionOpen(_motionId) {
         Motion storage motion = motions[_motionId];
         require(motion.approved, "This motion has not beed approved");
         require(!motion.enacted, "This motion has already been enacted");
